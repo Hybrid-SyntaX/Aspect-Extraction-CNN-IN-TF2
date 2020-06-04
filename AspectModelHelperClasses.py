@@ -56,8 +56,8 @@ class AspectModelMetadata:
             'learning_rate': self.aspectModel.lr,
             'dropout_rate': self.aspectModel.DROPOUT_RATE,
             'conv_droout_rate': self.aspectModel.DROPOUT_CONV,
-            'filter_sizes': self.aspectModel.FILTER_SIZE,
-            'feature_maps_count': self.aspectModel.NUMBER_OF_FEATURE_MAPS,
+            'filter_sizes': self.aspectModel.conv2d_filter_sizes,
+            'feature_maps_count': self.aspectModel.conv2d_feature_maps,
             'classes_count': self.aspectModel.NUM_TAGS,
             'window_length': self.aspectModel.WINDOW_LEN,
             'dim': self.aspectModel.DIM,
@@ -284,48 +284,25 @@ from seqeval.metrics import f1_score
 
 @tf.function(experimental_compile=True)
 def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
-    #gold = []
-    #pred = []
+
     correct_preds, total_correct, total_preds = 0., 0., 0.
 
     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
-        #result = lab & viterbi_seq
-        #result = tf.math.subtract(lab,viterbi_seq)
+
         result = tf.math.equal(lab,viterbi_seq)
 
         correct_preds +=  np.count_nonzero(result) #tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
         total_preds += len(viterbi_seq)
         total_correct += len(lab)
 
-        #result = tf.math.logical_and(lab,viterbi_seq)
-        # print('Result:', result )
-        # print('correct_preds:', correct_preds)
-        # print('total_preds:', total_preds)
-        # print('total_correct:', total_correct)
-        # input()
 
-    #     gold.extend(lab)
-    #     pred.extend(viterbi_seq)
-    #
-    # gold = K.utils.to_categorical(gold, 4)
-    # pred = K.utils.to_categorical(pred, 4)
 
     precision = correct_preds / total_preds if correct_preds > 0 else 0
     recall = correct_preds / total_correct if correct_preds > 0 else 0
     fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
 
 
-    #precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
-    #                                                                          zero_division = 0)
-    #
-    # if len(gold) > 0 and len(pred) > 0:
-    #     precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
-    #                                                                          zero_division = 0)  # average='macrp'
-    # else:
-    #     precision, recall, fscore, support = 0, 0, 0, 0
 
-    # print('f1:',f1)
-    # input()
     if metric_type == 'precision':
         return precision
     elif metric_type == 'recall':
@@ -339,7 +316,43 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
 #def crf_recall(y_true, y_pred): return crf_precision_recall_fscore_support('recall', y_true, y_pred)
 def crf_support(y_true, y_pred): return crf_precision_recall_fscore_support('support', y_true, y_pred)
 
-def crf_fscore(y_true, y_pred): return crf_precision_recall_fscore_manual('fscore',y_true, y_pred)
-def crf_precision(y_true, y_pred): return crf_precision_recall_fscore_manual('precision',y_true, y_pred)
-def crf_recall(y_true, y_pred): return crf_precision_recall_fscore_manual('fscore',y_true, y_pred)
-#def crf_fscore(y_true, y_pred): return crf_precision_recall_fscore_manual('fscore',y_true, y_pred)
+@tf.function(experimental_compile=True)
+def crf_metrics_prepare(y_pred, y_true):
+    correct_preds, total_correct, total_preds = 0., 0., 0.
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        result = tf.math.equal(lab, viterbi_seq)
+
+        correct_preds += np.count_nonzero(
+            result)  # tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+        total_preds += len(viterbi_seq)
+        total_correct += len(lab)
+    return correct_preds, total_correct, total_preds
+
+@tf.function(experimental_compile=True)
+def crf_fscore(y_true, y_pred):
+
+    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
+
+    precision = correct_preds / total_preds if correct_preds > 0 else 0
+    recall = correct_preds / total_correct if correct_preds > 0 else 0
+    fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
+
+    return fscore
+
+
+
+@tf.function(experimental_compile=True)
+def crf_precision(y_true, y_pred):
+    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
+
+    precision = correct_preds / total_preds if correct_preds > 0 else 0
+
+    return precision
+
+@tf.function(experimental_compile=True)
+def crf_recall(y_true, y_pred):
+    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
+
+    recall = correct_preds / total_correct if correct_preds > 0 else 0
+
+    return recall

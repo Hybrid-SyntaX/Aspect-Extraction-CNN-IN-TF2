@@ -19,7 +19,7 @@ tf.config.experimental_run_functions_eagerly(True) #reqruied for GPU
 #use_cpu(True)
 #%% Reading data
 
-max_sentence_length=100
+max_sentence_length=65
 #embeddings_filename=r'P:\Ongoing\University\Data Mining\Aspect Extraction\_\aspect-extraction-master\glove\glove.840B.300d.txt'
 embeddings_filename=r'data/sentic2vec-utf8.csv'
 restaurantDataset= DatasetReader('data/Restaurants_Train_v2.xml.iob',
@@ -48,7 +48,7 @@ convAspectModel=ConvAspectModel(
 model =convAspectModel.createKerasModel()
 convAspectModelMetadata= AspectModelMetadata(convAspectModel)
 
-metric_fns=[crf_accuracy,crf_fscore,crf_precision,crf_recall]
+metric_fns=[crf_fscore,crf_precision,crf_recall]#crf_accuracy,
 #metric_fns=[]
 optimizer='adam'
 epochs=10 #original: 200 , but ran for 47 epochs

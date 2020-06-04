@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras as K
 
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Embedding,Reshape #Conv1D
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Embedding,Reshape,Lambda#Conv1D
 
 from AspectModelHelperClasses import AspectModelBase, KAspectModel
 
@@ -13,8 +13,6 @@ class ConvAspectModel(AspectModelBase):
     # %% Creating model
     def __init__(self,embedding_matrix,num_tokens : int,max_sentence_length,num_tags=4, *args, **kwargs):
         super(ConvAspectModel, self).__init__()
-        self.sent_len=None
-        self.global_trans_params=None
         self.embedding_matrix=embedding_matrix
         self.max_sentence_length=max_sentence_length
         self.WINDOW_LEN = 3 # code: 3, paper: 2
@@ -24,8 +22,11 @@ class ConvAspectModel(AspectModelBase):
         self.embedding_dim=self.embedding_matrix.shape[1]#dataset_util.getEmbeddingDim(embeddings_index)
         self.stride = 1
         self.DROPOUT_CONV = 0.6
-        self.FILTER_SIZE = [1, 2, 3]
-        self.NUMBER_OF_FEATURE_MAPS = [300, 300, 300]
+        self.conv2d_filter_sizes = [3, 2, 1]
+        self.conv2d_feature_maps = [300, 100, 50]
+
+        #self.FILTER_SIZE = [1, 2, 3]
+        #self.NUMBER_OF_FEATURE_MAPS = [300, 300, 300]
         self.NUM_TAGS=num_tags
         self.lr=0.001
 
@@ -66,27 +67,41 @@ class ConvAspectModel(AspectModelBase):
     def createConv2dLayers(self,patches_reshaped):
         convolution_layers_2d = []
 
-        for i, filter_size in enumerate(self.FILTER_SIZE):
+        #for i, filter_size in enumerate(self.FILTER_SIZE):
+        for feature_map, filter_size in zip(self.conv2d_feature_maps, self.conv2d_filter_sizes):
 
-            conv2d = Conv2D(self.NUMBER_OF_FEATURE_MAPS[i],(self.FILTER_SIZE[i],self.DIM)  ,activation="relu",
+            conv2d = Conv2D(filters=feature_map,
+                            kernel_size=(filter_size,self.DIM)  ,activation="relu",
                         kernel_initializer = tf.keras.initializers.TruncatedNormal(mean = 0.0, stddev = 0.1, seed = None),
                         bias_initializer = tf.constant_initializer(0.1),strides=[1,1],
                         padding='valid')(patches_reshaped)
             #Tensor("conv/Identity:0", shape=(None, 3, 1, 300), dtype=float32) !!
 
-            conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - self.FILTER_SIZE[i] + 1),1 ))(conv2d)
+            #conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - filter_size + 1),1),padding='valid',data_format='channels_last')(conv2d)
+            conv2d_pooled = MaxPool2D(pool_size = ((self.WINDOW_LEN - filter_size + 1), 1), padding = 'valid',
+                                      data_format = 'channels_last')(conv2d)
+            # conv2d_pooled = MaxPool2D(pool_size = (2, 1), padding = 'valid',
+            #                           data_format = 'channels_last')(conv2d)
+
+            input()
+            #conv2d_pooled = MaxPool2D(pool_size = (1, 1))(conv2d)
             # Tensor("max_pooling2d/Identity:0", shape=(None, 1, 1, 300), dtype=float32)
 
-            conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
-            # Tensor("Squeeze_1:0", shape=(1, 1, 300), dtype=float32)
+            #conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
+            conv2d_pooled_squeezed= Lambda(lambda x: K.backend.squeeze(x,axis=1))(conv2d_pooled)
+            #print(conv2d_pooled_squeezed)
+            #input()
+            # Tensor("Squeeze_1:0", shape=(None, 1, 300), dtype=float32)
             conv2d_pooled_squeezed_reshaped = K.backend.reshape(
-                conv2d_pooled_squeezed,(-1,self.max_sentence_length,self.NUMBER_OF_FEATURE_MAPS[i]))
+                conv2d_pooled_squeezed,(-1,self.max_sentence_length,feature_map))
+
+            #conv2d_pooled_squeezed_reshaped=Reshape((-1,self.max_sentence_length,self.NUMBER_OF_FEATURE_MAPS[i]))(conv2d_pooled_squeezed)
             #Tensor("Reshape_2:0", shape=(None, 100, 300), dtype=float32)
             print(conv2d_pooled_squeezed_reshaped)
 
             convolution_layers_2d.append(conv2d_pooled_squeezed_reshaped)
         return convolution_layers_2d
-    def createConv2dLayer(self,patches_reshaped,features_num,filter_size):
+    def createConv2dLayer(self,patches_reshaped,features_num,filter_size,pool_size):
 
         conv2d = Conv2D(features_num,(filter_size,self.DIM)  ,activation="relu",
                     kernel_initializer = tf.keras.initializers.TruncatedNormal(mean = 0.0, stddev = 0.1, seed = None),
@@ -94,7 +109,7 @@ class ConvAspectModel(AspectModelBase):
                     padding='valid')(patches_reshaped)
         #Tensor("conv/Identity:0", shape=(None, 3, 1, 300), dtype=float32) !!
 
-        conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - filter_size + 1),1 ))(conv2d)
+        conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - filter_size + 1),pool_size ))(conv2d)
         # Tensor("max_pooling2d/Identity:0", shape=(None, 1, 1, 300), dtype=float32)
 
         conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
@@ -142,13 +157,14 @@ class ConvAspectModel(AspectModelBase):
         int_sequences_input = K.Input(shape=(self.max_sentence_length,), dtype="int64")
         patches_reshaped = self.createEmbeddingLayer(int_sequences_input,self.embedding_dim,self.num_tokens)
 
-        conv2d_layers=K.layers.concatenate([
-            self.createConv2dLayer(patches_reshaped,300,1),
-            self.createConv2dLayer(patches_reshaped, 300, 2),
-            self.createConv2dLayer(patches_reshaped, 300, 3)],axis=2)
+        # conv2d_layers=K.layers.concatenate([
+        #     self.createConv2dLayer(patches_reshaped,50,3),
+        #     self.createConv2dLayer(patches_reshaped, 100, 2),
+        #     #self.createConv2dLayer(patches_reshaped, 300, 3)
+        # ],axis=2)
 
-        #convolution_layers_2d=self.createConv2dLayers(patches_reshaped)
-        #conv2d_layers = K.layers.concatenate(convolution_layers_2d,axis=2)
+        convolution_layers_2d=self.createConv2dLayers(patches_reshaped)
+        conv2d_layers = K.layers.concatenate(convolution_layers_2d,axis=2)
 
         #Tensor("concatenate/Identity:0", shape=(None, 100, 900), dtype=float32) ????
 
@@ -158,8 +174,8 @@ class ConvAspectModel(AspectModelBase):
         # print('size: ',size)
 
         size = 0
-        for i in range(len(self.FILTER_SIZE)):
-            size += self.NUMBER_OF_FEATURE_MAPS[i]
+        for i in range(len(self.conv2d_filter_sizes)):
+            size += self.conv2d_feature_maps[i]
         print('size: ', size)
 
 
