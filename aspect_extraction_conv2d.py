@@ -14,9 +14,9 @@ tf.config.set_soft_device_placement(False)
 #print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 #input('Press any key to cotinue...')
 
-tf.config.experimental_run_functions_eagerly(True) #reqruied for GPU
+#tf.config.experimental_run_functions_eagerly(True) #reqruied for GPU
 
-#use_cpu(True)
+use_cpu(True)
 #%% Reading data
 
 max_sentence_length=65
@@ -49,9 +49,10 @@ model =convAspectModel.createKerasModel()
 convAspectModelMetadata= AspectModelMetadata(convAspectModel)
 
 metric_fns=[crf_fscore,crf_precision,crf_recall]#crf_accuracy,
+
 #metric_fns=[]
 optimizer='adam'
-epochs=10 #original: 200 , but ran for 47 epochs
+epochs=97 #original: 200 , but ran for 47 epochs
 batch_size=30#30
 
 model.compile(optimizer=optimizer, metrics=metric_fns)

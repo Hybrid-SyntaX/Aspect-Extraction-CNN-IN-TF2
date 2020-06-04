@@ -105,7 +105,7 @@ class AspectModelMetadata:
         return f"models\\{modelClass}-{lastTrained}-{epochsTrained}x{batchSize}-{score}"
 
     def updateMetadata(self, logs):
-        print('Metadata is updated')
+        #print('Metadata is updated')
         #for key in self.modelMetadata['metrics'].keys():
         for key in logs.keys():
             val = logs[key]
@@ -147,6 +147,20 @@ def crf_loglikelihood_loss(y_true, y_pred):
     loss = tf.math.reduce_mean(-log_likelihood)  #
 
     return loss
+class CRFMetricsData(metaclass = SingletonMeta):
+    correct_preds, total_correct, total_preds = 0., 0., 0.
+    isUpdated=False
+    precision,recall,fscore=0.0,0.0,0.0
+    i=0
+    r=0
+    def reset(self):
+        #print(f"RESET IS CALLED {self.r} times", )
+        #self.i+=1
+        self.r+=1
+        self.precision=0.0
+        self.recall=0.0
+        self.fscore=0.0
+
 
 class KAspectModel(K.Model):
     def __init__(self, *args, **kwargs):
@@ -181,17 +195,32 @@ class KAspectModel(K.Model):
     #     #print(y)
     #     return crf_precision_recall_fscore_manual('fscore',y,y_pred)
 
-    @tf.function(experimental_compile = True)
+
+    def _updateSentLen(self,x):
+        #AspectModelAuxData().SentencesLength.append(x)
+        #tf.concat(AspectModelAuxData().SentencesLength,tf.math.count_nonzero(x))
+        pass
+
+    @tf.function(experimental_compile = True, experimental_relax_shapes = True)
     def train_step(self, data):
         # Unpack the data. Its structure depends on your model and
         # on what you pass to `fit()`.
         x, y = data
 
-        # sent_len= [np.count_nonzero(sent) for sent in x]
-        AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+        #sent_len= [np.count_nonzero(sent) for sent in x]
 
+        #AspectModelAuxData().SentencesLength =tf.TensorArray(dtype = tf.int64,size = len(x))
+        #AspectModelAuxData().SentencesLength =np
+        #if tf.size(x)!=():
+        #    tf.map_fn(self._updateSentLen,x)
+        #input()
+        #AspectModelAuxData().SentencesLength=[]
+        AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+        #self._updateSentLen(x)
 
         with tf.GradientTape() as tape:
+            #CRFMetricsData().reset()
+
             y_pred = self(x, training = True)  # Forward pass
 
 
@@ -200,9 +229,9 @@ class KAspectModel(K.Model):
 
             loss = tf.math.reduce_mean(-log_likelihood)  #
 
-
+            #loss = self.compiled_loss(y, y_pred, regularization_losses = self.losses)
             #manuily
-            # losses = self.compiled_loss(y, y_pred, regularization_losses = self.losses)
+            #losses = self.compiled_loss(y, y_pred, regularization_losses = self.losses)
             # #print(labels_pred)
             #
             # #labels_pred = tf.cast(tf.argmax(y_pred, axis = -1),tf.int32)
@@ -296,11 +325,9 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
         total_correct += len(lab)
 
 
-
     precision = correct_preds / total_preds if correct_preds > 0 else 0
     recall = correct_preds / total_correct if correct_preds > 0 else 0
     fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
-
 
 
     if metric_type == 'precision':
@@ -310,49 +337,107 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
     elif metric_type == 'fscore':
         return fscore
 
+    #print(f'crf manual claled {CRFMetricsData().i} times')
+    # CRFMetricsData().i+=1
+    # CRFMetricsData().precision=precision
+    # CRFMetricsData().recall = recall
+    # CRFMetricsData().fscore = fscore
 
-#def crf_fscore(y_true, y_pred): return crf_precision_recall_fscore_support('fscore', y_true, y_pred)
-#def crf_precision(y_true, y_pred): return crf_precision_recall_fscore_support('precision', y_true, y_pred)
-#def crf_recall(y_true, y_pred): return crf_precision_recall_fscore_support('recall', y_true, y_pred)
-def crf_support(y_true, y_pred): return crf_precision_recall_fscore_support('support', y_true, y_pred)
-
-@tf.function(experimental_compile=True)
-def crf_metrics_prepare(y_pred, y_true):
-    correct_preds, total_correct, total_preds = 0., 0., 0.
-    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
-        result = tf.math.equal(lab, viterbi_seq)
-
-        correct_preds += np.count_nonzero(
-            result)  # tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
-        total_preds += len(viterbi_seq)
-        total_correct += len(lab)
-    return correct_preds, total_correct, total_preds
-
-@tf.function(experimental_compile=True)
 def crf_fscore(y_true, y_pred):
+    return crf_precision_recall_fscore_manual('fscore', y_true, y_pred)
 
-    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
-
-    precision = correct_preds / total_preds if correct_preds > 0 else 0
-    recall = correct_preds / total_correct if correct_preds > 0 else 0
-    fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
-
-    return fscore
-
-
-
-@tf.function(experimental_compile=True)
 def crf_precision(y_true, y_pred):
-    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
+    return crf_precision_recall_fscore_manual('precision', y_true, y_pred)
 
-    precision = correct_preds / total_preds if correct_preds > 0 else 0
-
-    return precision
-
-@tf.function(experimental_compile=True)
 def crf_recall(y_true, y_pred):
-    correct_preds, total_correct, total_preds = crf_metrics_prepare(y_pred, y_true)
+    return crf_precision_recall_fscore_manual('recall', y_true, y_pred)
 
-    recall = correct_preds / total_correct if correct_preds > 0 else 0
 
-    return recall
+def crf_support(y_true, y_pred): return crf_precision_recall_fscore_support('support', y_true, y_pred)
+#
+
+
+#@tf.function(experimental_compile=True)
+
+# def _crf_metrics_prepare(y_pred, y_true):
+#
+#     correct_preds, total_correct, total_preds = 0., 0., 0.
+#     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+#         result = tf.math.equal(lab, viterbi_seq)
+#
+#         correct_preds += np.count_nonzero(
+#             result)  # tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+#         total_preds += len(viterbi_seq)
+#         total_correct += len(lab)
+#     return correct_preds, total_correct, total_preds
+#
+# def crf_metrics_prepare(y_pred, y_true):
+#
+#     #if CRFMetricsData().correct_preds==0 and  CRFMetricsData().total_correct==0 and CRFMetricsData().total_preds==0:
+#     #correct_preds, total_correct, total_preds = 0., 0., 0.
+#     if CRFMetricsData().isUpdated==False:
+#         for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+#             result = tf.math.equal(lab, viterbi_seq)
+#
+#             CRFMetricsData().correct_preds += np.count_nonzero(result)  # tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+#             CRFMetricsData().total_preds += len(viterbi_seq)
+#             CRFMetricsData().total_correct += len(lab)
+#
+#             CRFMetricsData().isUpdated=False
+#     return CRFMetricsData().correct_preds, CRFMetricsData().total_correct, CRFMetricsData().total_preds
+# @tf.function(experimental_compile=True)
+# def crf_fscore(y_true, y_pred):
+#     correct_preds, total_correct, total_preds = 0., 0., 0.
+#
+#     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+#
+#         result = tf.math.equal(lab,viterbi_seq)
+#
+#         correct_preds +=  np.count_nonzero(result) #tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+#         total_preds += len(viterbi_seq)
+#         total_correct += len(lab)
+#
+#
+#
+#     precision = correct_preds / total_preds if correct_preds > 0 else 0
+#     recall = correct_preds / total_correct if correct_preds > 0 else 0
+#     fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
+#
+#     return fscore
+#
+#
+#
+# @tf.function(experimental_compile=True)
+# def crf_precision(y_true, y_pred):
+#     correct_preds, total_correct, total_preds = 0., 0., 0.
+#
+#     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+#
+#         result = tf.math.equal(lab,viterbi_seq)
+#
+#         correct_preds +=  np.count_nonzero(result) #tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+#         total_preds += len(viterbi_seq)
+#         total_correct += len(lab)
+#
+#
+#
+#     precision = correct_preds / total_preds if correct_preds > 0 else 0
+#     recall = correct_preds / total_correct if correct_preds > 0 else 0
+#
+#     return precision
+#
+# @tf.function(experimental_compile=True)
+# def crf_recall(y_true, y_pred):
+#     correct_preds, total_correct, total_preds = 0., 0., 0.
+#
+#     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+#         result = tf.math.equal(lab, viterbi_seq)
+#
+#         correct_preds += np.count_nonzero(
+#             result)  # tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+#         total_preds += len(viterbi_seq)
+#         total_correct += len(lab)
+#
+#     recall = correct_preds / total_correct if correct_preds > 0 else 0
+#
+#     return recall

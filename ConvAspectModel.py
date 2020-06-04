@@ -24,6 +24,8 @@ class ConvAspectModel(AspectModelBase):
         self.DROPOUT_CONV = 0.6
         self.conv2d_filter_sizes = [3, 2, 1]
         self.conv2d_feature_maps = [300, 100, 50]
+        #self.conv2d_filter_sizes = [1,2,3]
+        #self.conv2d_feature_maps = [300, 300, 300]
 
         #self.FILTER_SIZE = [1, 2, 3]
         #self.NUMBER_OF_FEATURE_MAPS = [300, 300, 300]
@@ -90,7 +92,7 @@ class ConvAspectModel(AspectModelBase):
 
             #conv2d_pooled_squeezed_reshaped=Reshape((-1,self.max_sentence_length,self.NUMBER_OF_FEATURE_MAPS[i]))(conv2d_pooled_squeezed)
             #Tensor("Reshape_2:0", shape=(None, 100, 300), dtype=float32)
-            print(conv2d_pooled_squeezed_reshaped)
+            #print(conv2d_pooled_squeezed_reshaped)
 
             convolution_layers_2d.append(conv2d_pooled_squeezed_reshaped)
         return convolution_layers_2d
@@ -113,7 +115,7 @@ class ConvAspectModel(AspectModelBase):
             # conv2d_pooled = MaxPool2D(pool_size = (2, 1), padding = 'valid',
             #                           data_format = 'channels_last')(conv2d)
 
-            input()
+            #input()
             #conv2d_pooled = MaxPool2D(pool_size = (1, 1))(conv2d)
             # Tensor("max_pooling2d/Identity:0", shape=(None, 1, 1, 300), dtype=float32)
 
