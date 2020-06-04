@@ -6,6 +6,7 @@ import tensorflow_addons as tfa
 from joblib import load
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import helper_util
+import tensorflow.keras as K
 from AspectModelHelperClasses import KAspectModel
 from DatasetReader import DatasetReader
 print('All libraries are imported')
@@ -20,11 +21,11 @@ input_sentence= sys.argv[2]
 
 # %% load data
 
-max_sentence_length=100
-restaurantDataset= DatasetReader(r'Restaurants_Train_v2.xml.iob',r'Restaurants_Test_Data_phaseB.xml.iob','tags_res_2016.txt','sentic2vec-utf8.csv',max_sentence_length)
+max_sentence_length=65
+restaurantDataset= DatasetReader(r'data/Restaurants_Train_v2.xml.iob',r'data/Restaurants_Test_Data_phaseB.xml.iob','data/aspect-tags.txt','data/sentic2vec-utf8.csv',max_sentence_length)
 x_train,y_train,x_val,y_val=restaurantDataset.prepareData()
 #3 class model
-restaurantDataset.labels_dict.pop('NN') # remove NN class
+#restaurantDataset.labels_dict.pop('NN') # remove NN class
 
 class_names=[k for k in restaurantDataset.labels_dict.keys()]
 print('intitalization complete')
@@ -32,13 +33,13 @@ print('intitalization complete')
 
 # %% Loading model
 
-model = tf.keras.models.load_model(model_filename, custom_objects={'KAspectModel':KAspectModel},compile = False)
+model = tf.keras.models.load_model(model_filename, custom_objects={'KAspectModel':KAspectModel,'squeeze':K.backend.squeeze,'Lambda':K.layers.Lambda},compile = False)
 trans_params = load(model_filename.split('.')[0]+'-trans_params.joblib')
 print('trans_params loaded',trans_params)
 model.summary()
-model.compile()
-results = model.evaluate_with_f1(x_val,y_val,trans_params)
-print("Validation data F1 Score:", results)
+#model.compile()
+#results = model.evaluate_with_f1(x_val,y_val,trans_params)
+#print("Validation data F1 Score:", results)
 # %% Testing model
 
 test_samples = [

@@ -63,7 +63,37 @@ class ConvAspectModel(AspectModelBase):
         input()
 
         return patches_reshaped
+    def createConv2dLayersTF(self,patches_reshaped):
+        convolution_layers_2d = []
 
+        #for i, filter_size in enumerate(self.FILTER_SIZE):
+        for feature_map, filter_size in zip(self.conv2d_feature_maps, self.conv2d_filter_sizes):
+            filter_shape = [filter_size, self.DIM, 1, feature_map]
+
+            W = tf.Variable(tf.random.truncated_normal(filter_shape, stddev = 0.1))
+            b = tf.Variable(tf.constant(0.1, shape = [feature_map]))
+
+
+            conv = tf.nn.conv2d(patches_reshaped, filters = W, strides = [1, 1, 1, 1], padding = "VALID")
+
+            conv2d_pooled = tf.nn.max_pool(conv, ksize = [1, (self.WINDOW_LEN - filter_size + 1), 1, 1],
+                                    strides = [1, 1, 1, 1], padding = 'VALID', data_format = 'NHWC', name = "pool")
+
+            #conv2d_pooled_squeezed= Lambda(lambda x: K.backend.squeeze(x,axis=1))(conv2d_pooled)
+            conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled, axis = 1)  # 0 -> (3, 99, 100), 1->(None, 1, 300)
+            #print(conv2d_pooled_squeezed)
+            #input()
+            # Tensor("Squeeze_1:0", shape=(None, 1, 300), dtype=float32)
+
+            conv2d_pooled_squeezed_reshaped = K.backend.reshape(
+                conv2d_pooled_squeezed,(-1,self.max_sentence_length,feature_map))
+
+            #conv2d_pooled_squeezed_reshaped=Reshape((-1,self.max_sentence_length,self.NUMBER_OF_FEATURE_MAPS[i]))(conv2d_pooled_squeezed)
+            #Tensor("Reshape_2:0", shape=(None, 100, 300), dtype=float32)
+            print(conv2d_pooled_squeezed_reshaped)
+
+            convolution_layers_2d.append(conv2d_pooled_squeezed_reshaped)
+        return convolution_layers_2d
     def createConv2dLayers(self,patches_reshaped):
         convolution_layers_2d = []
 
@@ -87,8 +117,8 @@ class ConvAspectModel(AspectModelBase):
             #conv2d_pooled = MaxPool2D(pool_size = (1, 1))(conv2d)
             # Tensor("max_pooling2d/Identity:0", shape=(None, 1, 1, 300), dtype=float32)
 
-            #conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
-            conv2d_pooled_squeezed= Lambda(lambda x: K.backend.squeeze(x,axis=1))(conv2d_pooled)
+            conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
+            #conv2d_pooled_squeezed= Lambda(lambda x: K.backend.squeeze(x,axis=1))(conv2d_pooled)
             #print(conv2d_pooled_squeezed)
             #input()
             # Tensor("Squeeze_1:0", shape=(None, 1, 300), dtype=float32)
