@@ -7,10 +7,13 @@ import os
 
 
 def readData(iob_filename):
-    # Initailizing 
-    reader = ConllChunkCorpusReader('.', iob_filename, 
+    # Initailizing
+    #noun, verb, adjective, adverb, preposition, conjunction
+    pos_tags =('NOUN','VERB','ADV','ADJ','IN','CONJ')
+    aspect_tags = ('I-A','O','B-A', 'NN')
+    reader = ConllChunkCorpusReader('.', iob_filename,pos_tags+aspect_tags,encoding='utf-8')
     #('NP','VP','ADJP','ADVP','PNP','SBAR')
-    ('I-A','O','B-A', 'NN'),encoding='utf-8') 
+
     
     #reader.chunked_words() 
     reader.chunked_sents()
@@ -59,18 +62,22 @@ def buildSentenceLengthsByWords(setnences):
 
 def createData(iob_data,labels_dict):
     sentences=[]
+    pos_tags=[]
     labels=[]
     for s in iob_data:
         sentence = []
+        pos_tag=[]
         sentence_label = []
         for word,pos,tag in s:
             sentence.append(word)
+            pos_tag.append(pos)
             sentence_label.append(np.int32(labels_dict[tag]))
 
         sentences.append(sentence)
+        pos_tags.append(pos_tag)
         labels.append(sentence_label)
 
-    return np.array(sentences),labels
+    return np.array(sentences),pos_tags,labels
 
 def getVectorizer(data,max_sentence_length):
     vectorizer = TextVectorization(max_tokens=50000, output_sequence_length=max_sentence_length,standardize='lower_and_strip_punctuation')

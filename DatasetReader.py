@@ -14,8 +14,8 @@ class DatasetReader():
         #labels_dict = dataset_util.readTags('aspect-tags.txt')
         self.labels_dict = dataset_util.readTags(tags_filename)
 
-        self.train_samples,self.train_labels = dataset_util.createData(self.train_iob,self.labels_dict)
-        self.val_samples, self.val_labels = dataset_util.createData(self.test_iob,self.labels_dict)
+        self.train_samples,self.train_pos_tags,self.train_labels = dataset_util.createData(self.train_iob,self.labels_dict)
+        self.val_samples, self.val_pos_tags,self.val_labels = dataset_util.createData(self.test_iob,self.labels_dict)
 
         self.train_samples = dataset_util.buildSentencesString(self.train_samples)
         self.val_samples = dataset_util.buildSentencesString(self.val_samples)
