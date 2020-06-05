@@ -1,4 +1,4 @@
-from nltk.corpus.reader import ConllChunkCorpusReader
+from nltk.corpus.reader import ConllChunkCorpusReader, nltk
 import numpy as np 
 from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 import tensorflow as tf
@@ -157,3 +157,22 @@ def createOneHotCodedPOSFeatures(x_train_pos,pos_tags):
         x_train_pos_features.append(tagged_sentence_onehot)
 
     return x_train_pos_features
+
+def prepareSentence(input_sentence,pos_tags_group=None):
+
+    test_samples_X_with_pos = extractPOS(input_sentence)
+    sentence = []
+    sentence_pos = []
+
+    for word, pos in test_samples_X_with_pos:
+        sentence.append(word)
+        if pos_tags_group is not None:
+            i, pos= get_pos_group(pos,pos_tags_group)
+        sentence_pos.append(pos)
+    return sentence, sentence_pos
+
+def extractPOS( input_sentence):
+    tokenizer = nltk.RegexpTokenizer(r"\w+")
+    text = tokenizer.tokenize(input_sentence)
+    input_wiht_pos = nltk.pos_tag(text)
+    return input_wiht_pos

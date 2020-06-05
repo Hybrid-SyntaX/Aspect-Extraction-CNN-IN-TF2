@@ -15,6 +15,7 @@ from DatasetReader import DatasetReader
 import dataset_util
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Embedding,Reshape,Lambda#Conv1D
 
+from POSAspectModel import POSAspectModel
 from helper_util import use_cpu
 from sklearn.preprocessing import OneHotEncoder
 # %% Use cpu
@@ -38,32 +39,17 @@ restaurantDataset= DatasetReader(f'data/Restaurants_Train_v2.xml.iob',
 # Preprocess data
 x_train,x_train_pos,y_train , x_val,x_val_pos,y_val= restaurantDataset.prepareDataForPos()
 
+posAspectModel=POSAspectModel(
+    num_tokens= len(restaurantDataset.word_index)+100,
+    max_sentence_length=restaurantDataset.max_sentence_length,
+    num_tags = len(restaurantDataset.labels_dict))
 
-print(np.shape(x_train))
-print(np.shape(x_train_pos))
-print(np.shape(y_train))
-# 65 x 6
+model =posAspectModel.createKerasModel()
 
-lr=0.001
-DROPOUT_CONV=0.6
-NUM_TAGS=3
-
-
-int_sequences_input = K.Input(shape=(max_sentence_length,6))#, dtype="int64"
-
-my_layer= Bidirectional(LSTM(300, return_sequences=True))(int_sequences_input)
-my_layer= Bidirectional(LSTM(100, return_sequences=True))(my_layer)
-
-
-my_layer= TimeDistributed(Dense(3,kernel_initializer = K.initializers.GlorotUniform(seed=1227),
-            kernel_regularizer = K.regularizers.l2(0.001),
-            bias_initializer = tf.zeros_initializer()))(my_layer)
-output= Activation('softmax')(my_layer)
-model = KAspectModel(int_sequences_input, output)
 model.summary()
 model.compile(optimizer="adam", metrics=[])#loss='sparse_categorical_crossentropy',
 
 model.fit(x_train_pos, y_train, batch_size=30, epochs=30)
-model.save('models/pos_model_3.h5')
-dump(AspectModelAuxData().ViterbiTransParams, 'models/pos_model_3' + '-trans_params.joblib')
+model.save('models/pos_model_5.h5')
+dump(AspectModelAuxData().ViterbiTransParams, 'models/pos_model_5' + '-trans_params.joblib')
 #print('F1-score:',model.evaluate_with_f1(x_val_pos,y_val))
