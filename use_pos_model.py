@@ -18,9 +18,9 @@ tf.config.experimental_run_functions_eagerly(True)
 helper_util.use_cpu(True)
 
 # %% read commandline arguments
-#model_filename= sys.argv[1]
+model_filename= sys.argv[1]
 #input_sentence= sys.argv[2]
-model_filename = "models\pos_model_4.h5"
+#model_filename = "models\pos_model_4.h5"
 input_sentence = "I like cake"
 # %% load data
 
@@ -50,14 +50,14 @@ print("Validation data F1 Score:", results)
 #test_index=1
 test_samples = [
     #input_sentence,
-    restaurantDataset.train_samples[100],
-    restaurantDataset.train_samples[200],
     restaurantDataset.train_samples[300],
+    restaurantDataset.train_samples[400],
+    restaurantDataset.train_samples[500],
 ]
 test_labels=[
-    restaurantDataset.train_labels[100],
-    restaurantDataset.train_labels[200],
     restaurantDataset.train_labels[300],
+    restaurantDataset.train_labels[400],
+    restaurantDataset.train_labels[500],
 ]
 #
 # test_samples=[
@@ -72,9 +72,9 @@ test_labels=[
 #     test_samples_X_with_pos
 # ]
 test_samples_X=[
-    x_val_pos[100],
-    x_val_pos[200],
-    x_val_pos[300]
+    x_val_pos[300],
+    x_val_pos[400],
+    x_val_pos[500]
 ]
 #test_samples_X = restaurantDataset.vectorizer(np.array([[s] for s in test_samples])).numpy()
 sentences_lengths = [np.count_nonzero(sentence) for sentence in test_samples_X]
