@@ -18,41 +18,24 @@ use_cpu(True)
 max_sentence_length=65
 #nostopwords="-nostopwords"
 
+# Load data
 embeddings_filename=r'data/sentic2vec-utf8.csv'
 restaurantDataset= DatasetReader(f'data/Restaurants_Train_v2.xml.iob',
                                  f'data/Restaurants_Test_Data_phaseB.xml.iob',
                                  'data/aspect-tags.txt',
                                  embeddings_filename,
                                  max_sentence_length)
-x_train,y_train,x_val,y_val=restaurantDataset.prepareData()
+#x_train,y_train,x_val,y_val=restaurantDataset.prepareData()
 
-x_train,x_train_pos,y_train = restaurantDataset.prepareDataForPos(x_train,y_train)
-x_val,x_val_pos,y_val = restaurantDataset.prepareDataForPos(x_val,y_val)
+# Preprocess data
+#x_train,x_train_pos,y_train = restaurantDataset.prepareDataForPos(x_train,y_train)
+#x_val,x_val_pos,y_val = restaurantDataset.prepareDataForPos(x_val,y_val)
+x_train,x_train_pos,y_train , x_val,x_val_pos,y_val= restaurantDataset.prepareDataForPos()
 
 
-
-print(x_train[0])
-print(x_train_pos[0])
-print(y_train[0])
-
-# for s_i in range(len(x_train)-1):
-#     #sentence_pos = x_train_pos_onehot[s_i]
-#     #sent_len=len(sentence_pos)
-#     sent_len=max(len(x_train_pos_onehot[s_i]),
-#                  len(x_train),
-#                  len(y_train))
-#     new_sentence=[]
-#     new_sentence_pos=[]
-#     new_sentence_label=[]
-#     for w_i in range(sent_len-1):
-#         if x_train_pos_onehot[s_i][w_i] is not None:
-#             new_sentence.append(x_train[s_i][w_i])
-#             new_sentence_pos.append(x_train_pos_onehot[s_i][w_i])
-#             new_sentence_label.append(y_train[s_i][w_i])
-#     new_sentences.append(new_sentence)
-#     new_sentence_poses.append(new_sentence_pos)
-#     new_sentence_labels.append(new_sentence_label)
-
+print(np.shape(x_train))
+print(np.shape(x_train_pos))
+print(np.shape(y_train))
 
 
 
