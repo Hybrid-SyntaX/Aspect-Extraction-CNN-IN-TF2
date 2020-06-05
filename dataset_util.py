@@ -136,3 +136,24 @@ def createEmbeddingsMatrix(embeddings_index,word_index):
     return embedding_matrix
 
 
+
+def get_pos_group(pos_tag,pos_tags):
+    for i,(tag_group, tags) in enumerate(pos_tags.items()):
+        if pos_tag in tags:
+            return i,tag_group
+    else:
+        return -1,None
+
+def createOneHotCodedPOSFeatures(x_train_pos,pos_tags):
+    x_train_pos_features=[]
+    for tagged_sentence in x_train_pos: #sentence
+        tagged_sentence_onehot=[]
+        for word_pos in tagged_sentence:
+            i,group_name=get_pos_group(word_pos,pos_tags)
+            if group_name is not None:
+                tagged_sentence_onehot.append(np.eye(1, 6, i)[0])
+            else:
+                tagged_sentence_onehot.append(None)
+        x_train_pos_features.append(tagged_sentence_onehot)
+
+    return x_train_pos_features

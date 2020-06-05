@@ -43,3 +43,36 @@ class DatasetReader():
         y_val = pad_sequences(np.asarray(self.val_labels),maxlen=self.max_sentence_length,padding='post')
 
         return x_train,y_train,x_val,y_val
+
+    def prepareDataForPos(self,x_train,y_train):
+        x_train_pos = self.train_pos_tags
+        x_val_pos = self.val_pos_tags
+
+        pos_tags = {
+            'NOUN': ('NN', 'NNS', 'NNP', 'NNPS'),
+            'VERB': ('VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'),
+            'ADV': ('RB', 'RBR', 'RBS'),
+            'ADJ': ('JJ', 'JJR', 'JJS'),
+            'IN': ('IN'),  # prepositions
+            'CONJ': ('CC')
+        }
+        x_train_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_train_pos, pos_tags)
+        x_val_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_val_pos, pos_tags)
+
+        new_sentences = []
+        new_sentence_poses = []
+        new_sentence_labels = []
+        for sentence, sentence_pos_1hot, sentence_label in zip(x_train, x_train_pos_onehot, y_train):
+            new_sentence = []
+            new_sentence_pos = []
+            new_sentence_label = []
+            for word, word_pos, word_Label in zip(sentence, sentence_pos_1hot, sentence_label):
+                if word_pos is not None:
+                    new_sentence.append(word)
+                    new_sentence_pos.append(word_pos)
+                    new_sentence_label.append(word_Label)
+            new_sentences.append(new_sentence)
+            new_sentence_poses.append(new_sentence_pos)
+            new_sentence_labels.append(new_sentence_label)
+
+            return new_sentences, new_sentence_poses, new_sentence_labels
