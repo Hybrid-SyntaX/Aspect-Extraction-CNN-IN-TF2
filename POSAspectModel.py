@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as K
 
 from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Embedding,Reshape,Lambda#Conv1D
-from tensorflow.python.keras.layers import TimeDistributed, Bidirectional, LSTM
+from tensorflow.python.keras.layers import TimeDistributed, Bidirectional, LSTM, Activation
 
 from AspectModelHelperClasses import AspectModelBase, KAspectModel
 
@@ -17,7 +17,7 @@ class POSAspectModel(AspectModelBase):
         self.embedding_matrix=None#embedding_matrix
         self.max_sentence_length=max_sentence_length
         self.WINDOW_LEN = 3 # code: 3, paper: 2
-        self.DIM = 300
+        self.DIM = 6
         self.DROPOUT_RATE = 0.5
         self.num_tokens=num_tokens#len(word_index)+100
         #self.embedding_dim=self.embedding_matrix.shape[1]#dataset_util.getEmbeddingDim(embeddings_index)
@@ -64,7 +64,7 @@ class POSAspectModel(AspectModelBase):
 
         #patches_reshaped= Reshape((self.WINDOW_LEN, self.DIM))(patches)[:, :, :, tf.newaxis]
         ##print('patches: ',patches_reshaped)
-        input()
+
 
         return patches_reshaped
     def createConv2dLayersTF(self,patches_reshaped):
@@ -189,16 +189,20 @@ class POSAspectModel(AspectModelBase):
     def createKerasModel(self) :
 
         int_sequences_input = K.Input(shape=(self.max_sentence_length,self.num_pos_tags))
-        #patches_reshaped = self.createEmbeddingLayer(int_sequences_input,self.embedding_dim,self.num_tokens)
 
-        # conv2d_layers=K.layers.concatenate([
-        #     self.createConv2dLayer(patches_reshaped,50,3),
-        #     self.createConv2dLayer(patches_reshaped, 100, 2),
-        #     #self.createConv2dLayer(patches_reshaped, 300, 3)
-        # ],axis=2)
-
-        #convolution_layers_2d=self.createConv2dLayers(patches_reshaped)
-        #conv2d_layers = K.layers.concatenate(convolution_layers_2d,axis=2)
+        # squeezed_embedding_sequence = tf.keras.backend.squeeze(tf.image.extract_patches(
+        #     int_sequences_input[:, :, :, tf.newaxis],
+        #     sizes=[1,self.WINDOW_LEN,self.DIM, 1],strides= [1, self.stride, self.DIM, 1],
+        #     rates=[1, 1, 1, 1], padding="SAME", name=None
+        # ),axis=2)
+        #
+        # patches = Reshape((self.max_sentence_length,self.WINDOW_LEN,self.DIM))(squeezed_embedding_sequence)
+        # #Tensor("reshape_1/Identity:0", shape = (None, 100, 3, 300), dtype = float32)
+        #
+        # patches_reshaped = K.backend.reshape(patches, (-1, self.WINDOW_LEN, self.DIM))[:, :, :, tf.newaxis]
+        #
+        # convolution_layers_2d=self.createConv2dLayers(patches_reshaped)
+        # conv2d_layers = K.layers.concatenate(convolution_layers_2d,axis=2)
 
         #Tensor("concatenate/Identity:0", shape=(None, 100, 900), dtype=float32) ????
 
@@ -207,17 +211,19 @@ class POSAspectModel(AspectModelBase):
         #     size += self.NUMBER_OF_FEATURE_MAPS[i]
         # print('size: ',size)
 
-        # size = 0
-        # for i in range(len(self.conv2d_filter_sizes)):
-        #     size += self.conv2d_feature_maps[i]
-        # print('size: ', size)
+        size = 0
+        for i in range(len(self.conv2d_filter_sizes)):
+            size += self.conv2d_feature_maps[i]
+        print('size: ', size)
 
         my_layer = Bidirectional(LSTM(300, return_sequences = True))(int_sequences_input)
 
         my_layer = TimeDistributed(Dense(3, kernel_initializer = K.initializers.GlorotUniform(seed = 1227),
                                          kernel_regularizer = K.regularizers.l2(0.001),
                                          bias_initializer = tf.zeros_initializer()))(my_layer)
-        # output= Activation('softmax')(my_layer)
+
+
+
         output = K.backend.reshape(my_layer, (-1, self.max_sentence_length, self.NUM_TAGS))
 
 

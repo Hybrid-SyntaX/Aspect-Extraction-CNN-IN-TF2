@@ -61,7 +61,7 @@ class AspectModelMetadata:
             'classes_count': self.aspectModel.NUM_TAGS,
             'window_length': self.aspectModel.WINDOW_LEN,
             'dim': self.aspectModel.DIM,
-            'embedding_dim': self.aspectModel.embedding_dim,
+#            'embedding_dim': self.aspectModel.embedding_dim, @TODO: generize to dict
             'word_counts': self.aspectModel.num_tokens,
             'max_sentence_length': self.aspectModel.max_sentence_length
         }
@@ -327,7 +327,7 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
 
     precision = correct_preds / total_preds if correct_preds > 0 else 0
     recall = correct_preds / total_correct if correct_preds > 0 else 0
-    fscore = 2 * precision * recall / (precision + recall) if correct_preds > 0 else 0
+    fscore = (2 * precision * recall) / (precision + recall) if correct_preds > 0 else 0
 
 
     if metric_type == 'precision':

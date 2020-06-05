@@ -20,7 +20,7 @@ helper_util.use_cpu(True)
 # %% read commandline arguments
 #model_filename= sys.argv[1]
 #input_sentence= sys.argv[2]
-model_filename = "models\pos_model_3.h5"
+model_filename = "models\pos_model_4.h5"
 input_sentence = "I like cake"
 # %% load data
 
