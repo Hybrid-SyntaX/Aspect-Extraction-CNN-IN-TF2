@@ -54,7 +54,7 @@ class ConvAspectModel(AspectModelBase):
             num_tokens,
             embedding_dim,
             embeddings_initializer=K.initializers.Constant(self.embedding_matrix),
-            trainable=True,
+            trainable=True, #default false
             mask_zero=True
         )(int_sequences_input) # canon
         #Tensor("embedding/Identity:0", shape=(None, 100, 300), dtype=float32)

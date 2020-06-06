@@ -28,8 +28,13 @@ def configure_enviroment():
 def readData(max_sentence_length):
     #embeddings_filename=r'P:\Ongoing\University\Data Mining\Aspect Extraction\_\aspect-extraction-master\glove\glove.840B.300d.txt'
     embeddings_filename=r'data/sentic2vec-utf8.csv'
-    restaurantDataset= DatasetReader('data/Restaurants_Train_v2.xml.iob',
-                                     'data/Restaurants_Test_Data_phaseB.xml.iob',
+    # restaurantDataset= DatasetReader('data/Restaurants_Train_v2.xml.iob',
+    #                                  'data/Restaurants_Test_Data_phaseB.xml.iob',
+    #                                  'data/aspect-tags.txt',
+    #                                  embeddings_filename,
+    #                                  max_sentence_length)
+    restaurantDataset= DatasetReader('data/Laptop_Train_v2.xml.iob',
+                                     'data/Laptops_Test_Data_phaseB.xml.iob',
                                      'data/aspect-tags.txt',
                                      embeddings_filename,
                                      max_sentence_length)
@@ -53,12 +58,6 @@ def createModel(restaurantDataset,aspectModel):
 
     return keras_model,convAspectModelMetadata
 
-def updateSentenceLengths(batch):
-    print(batch)
-    input()
-    AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
-    print(AspectModelAuxData().SentencesLength [0])
-    input()
 # %% Create callbacks
 
 def train(model, modelMetadata, x_train, y_train, x_val, y_val, epochs, batch_size):
@@ -86,7 +85,7 @@ def train(model, modelMetadata, x_train, y_train, x_val, y_val, epochs, batch_si
     #%% Training model
 
     history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs,workers=8,
-                        use_multiprocessing=True,validation_data=(x_val, y_val),callbacks=[])
+                        use_multiprocessing=True,validation_data=(x_val, y_val),callbacks=callbacks)
 
     return history
 
@@ -99,8 +98,6 @@ def save(model,convAspectModelMetadata,history):
     print("Trainig complete")
 
 #%% Saving model
-
-
 
 def train_model(model_type):
     configure_enviroment()
