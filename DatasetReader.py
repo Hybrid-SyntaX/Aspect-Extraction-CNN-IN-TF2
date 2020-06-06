@@ -32,6 +32,8 @@ class DatasetReader():
         self.embeddings_index= dataset_util.readEmbeddings(embeddings_filename)
         self.embedding_matrix =dataset_util.createEmbeddingsMatrix(self.embeddings_index,self.word_index)
 
+        self.class_idx = {y: x for x, y in self.labels_dict.items()}
+
     def prepareData(self):
         x_train = self.vectorizer(np.array([[s] for s in self.train_samples])).numpy()
         x_train = pad_sequences(x_train,maxlen=self.max_sentence_length,padding='post')
