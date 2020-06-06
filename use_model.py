@@ -37,9 +37,22 @@ model = tf.keras.models.load_model(model_filename, custom_objects={'KAspectModel
 trans_params = load(model_filename.split('.')[0]+'-trans_params.joblib')
 print('trans_params loaded',trans_params)
 model.summary()
-#model.compile()
-#results = model.evaluate_with_f1(x_val,y_val,trans_params)
-#print("Validation data F1 Score:", results)
+
+# model.compile()
+# results = model.evaluate_with_sklearn_crf_metrics(x_train,y_train,trans_params,'recall')
+# print("Train data recall :", results)
+# results = model.evaluate_with_sklearn_crf_metrics(x_val,y_val,trans_params,'recall')
+# print("Validation data recall :", results)
+#
+# results = model.evaluate_with_sklearn_crf_metrics(x_train,y_train,trans_params,'precision')
+# print("Train data precision:", results)
+# results = model.evaluate_with_sklearn_crf_metrics(x_val,y_val,trans_params,'precision')
+# print("Validation data precision :", results)
+#
+# results = model.evaluate_with_sklearn_crf_metrics(x_train,y_train,trans_params,'fscore')
+# print("Train data F1 Score:", results)
+# results = model.evaluate_with_sklearn_crf_metrics(x_val,y_val,trans_params,'fscore')
+# print("Validation data F1 Score:", results)
 # %% Testing model
 
 test_samples = [

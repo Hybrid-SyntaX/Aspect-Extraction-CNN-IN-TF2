@@ -33,7 +33,21 @@ class POSAspectModel(AspectModelBase):
         #self.NUMBER_OF_FEATURE_MAPS = [300, 300, 300]
         self.NUM_TAGS=num_tags
         self.lr=0.001
-
+    def toDict(self):
+        return {
+            'model_class': type(self).__name__,
+            'learning_rate': self.lr,
+            'dropout_rate': self.DROPOUT_RATE,
+            'conv_droout_rate': self.DROPOUT_CONV,
+            'filter_sizes': self.conv2d_filter_sizes,
+            'feature_maps_count': self.conv2d_feature_maps,
+            'classes_count': self.NUM_TAGS,
+            'window_length': self.WINDOW_LEN,
+            'dim': self.DIM,
+            #'embedding_dim': self.embedding_dim,
+            'word_counts': self.num_tokens,
+            'max_sentence_length': self.max_sentence_length
+        }
     def createEmbeddingLayer(self,int_sequences_input,embedding_dim,num_tokens):
 
         # START OF EMBEDDING

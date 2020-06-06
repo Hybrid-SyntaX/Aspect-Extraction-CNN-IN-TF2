@@ -32,6 +32,21 @@ class ConvAspectModel(AspectModelBase):
         self.NUM_TAGS=num_tags
         self.lr=0.001
 
+    def toDict(self):
+        return {
+            'model_class': type(self).__name__,
+            'learning_rate': self.lr,
+            'dropout_rate': self.DROPOUT_RATE,
+            'conv_droout_rate': self.DROPOUT_CONV,
+            'filter_sizes': self.conv2d_filter_sizes,
+            'feature_maps_count': self.conv2d_feature_maps,
+            'classes_count': self.NUM_TAGS,
+            'window_length': self.WINDOW_LEN,
+            'dim': self.DIM,
+            'embedding_dim': self.embedding_dim,
+            'word_counts': self.num_tokens,
+            'max_sentence_length': self.max_sentence_length
+        }
     def createEmbeddingLayer(self,int_sequences_input,embedding_dim,num_tokens):
 
         # START OF EMBEDDING
@@ -39,7 +54,7 @@ class ConvAspectModel(AspectModelBase):
             num_tokens,
             embedding_dim,
             embeddings_initializer=K.initializers.Constant(self.embedding_matrix),
-            trainable=False,
+            trainable=True,
             mask_zero=True
         )(int_sequences_input) # canon
         #Tensor("embedding/Identity:0", shape=(None, 100, 300), dtype=float32)
@@ -65,37 +80,7 @@ class ConvAspectModel(AspectModelBase):
         input()
 
         return patches_reshaped
-    def createConv2dLayersTF(self,patches_reshaped):
-        convolution_layers_2d = []
 
-        #for i, filter_size in enumerate(self.FILTER_SIZE):
-        for feature_map, filter_size in zip(self.conv2d_feature_maps, self.conv2d_filter_sizes):
-            filter_shape = [filter_size, self.DIM, 1, feature_map]
-
-            W = tf.Variable(tf.random.truncated_normal(filter_shape, stddev = 0.1))
-            b = tf.Variable(tf.constant(0.1, shape = [feature_map]))
-
-
-            conv = tf.nn.conv2d(patches_reshaped, filters = W, strides = [1, 1, 1, 1], padding = "VALID")
-
-            conv2d_pooled = tf.nn.max_pool(conv, ksize = [1, (self.WINDOW_LEN - filter_size + 1), 1, 1],
-                                    strides = [1, 1, 1, 1], padding = 'VALID', data_format = 'NHWC', name = "pool")
-
-            #conv2d_pooled_squeezed= Lambda(lambda x: K.backend.squeeze(x,axis=1))(conv2d_pooled)
-            conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled, axis = 1)  # 0 -> (3, 99, 100), 1->(None, 1, 300)
-            #print(conv2d_pooled_squeezed)
-            #input()
-            # Tensor("Squeeze_1:0", shape=(None, 1, 300), dtype=float32)
-
-            conv2d_pooled_squeezed_reshaped = K.backend.reshape(
-                conv2d_pooled_squeezed,(-1,self.max_sentence_length,feature_map))
-
-            #conv2d_pooled_squeezed_reshaped=Reshape((-1,self.max_sentence_length,self.NUMBER_OF_FEATURE_MAPS[i]))(conv2d_pooled_squeezed)
-            #Tensor("Reshape_2:0", shape=(None, 100, 300), dtype=float32)
-            #print(conv2d_pooled_squeezed_reshaped)
-
-            convolution_layers_2d.append(conv2d_pooled_squeezed_reshaped)
-        return convolution_layers_2d
     def createConv2dLayers(self,patches_reshaped):
         convolution_layers_2d = []
 
@@ -133,25 +118,7 @@ class ConvAspectModel(AspectModelBase):
 
             convolution_layers_2d.append(conv2d_pooled_squeezed_reshaped)
         return convolution_layers_2d
-    def createConv2dLayer(self,patches_reshaped,features_num,filter_size,pool_size):
 
-        conv2d = Conv2D(features_num,(filter_size,self.DIM)  ,activation="relu",
-                    kernel_initializer = tf.keras.initializers.TruncatedNormal(mean = 0.0, stddev = 0.1, seed = None),
-                    bias_initializer = tf.constant_initializer(0.1),strides=[1,1],
-                    padding='valid')(patches_reshaped)
-        #Tensor("conv/Identity:0", shape=(None, 3, 1, 300), dtype=float32) !!
-
-        conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - filter_size + 1),pool_size ))(conv2d)
-        # Tensor("max_pooling2d/Identity:0", shape=(None, 1, 1, 300), dtype=float32)
-
-        conv2d_pooled_squeezed = K.backend.squeeze(conv2d_pooled,axis=1) # 0 -> (3, 99, 100), 1->(None, 1, 300)
-        # Tensor("Squeeze_1:0", shape=(1, 1, 300), dtype=float32)
-        conv2d_pooled_squeezed_reshaped = K.backend.reshape(
-            conv2d_pooled_squeezed,(-1,self.max_sentence_length,features_num))
-        #Tensor("Reshape_2:0", shape=(None, 100, 300), dtype=float32)
-        print(conv2d_pooled_squeezed_reshaped)
-
-        return conv2d_pooled_squeezed_reshaped
     def createDenseLayers(self,conv2d_layers,size):
         dense_input = K.backend.reshape(conv2d_layers, (-1, size))
         #Tensor("Reshape_5:0", shape=(None, 900), dtype=float32)
@@ -176,35 +143,15 @@ class ConvAspectModel(AspectModelBase):
 
         return output
 
-    # def UNUSED_createConv1DLayer(self,conv2d_layers,size):
-    #     #filter_shape = [self.config.conv2_filter_size, size, self.config.conv2_dim]
-    #     conv1d = Conv1D(size, self.CONV2_FILTER_SIZE, activation="relu", strides = 1, padding = "same",
-    #                         kernel_initializer = tf.keras.initializers.TruncatedNormal(mean = 0.0, stddev = 0.1, seed = None),
-    #                         bias_initializer = tf.constant_initializer(0.1),)(conv2d_layers)
-    #
-    #     return conv1d
-        #Tensor("conv1d/Identity:0", shape=(None, 100, 900), dtype=float32)
     def createKerasModel(self) :
 
         int_sequences_input = K.Input(shape=(self.max_sentence_length,), dtype="int64")
         patches_reshaped = self.createEmbeddingLayer(int_sequences_input,self.embedding_dim,self.num_tokens)
 
-        # conv2d_layers=K.layers.concatenate([
-        #     self.createConv2dLayer(patches_reshaped,50,3),
-        #     self.createConv2dLayer(patches_reshaped, 100, 2),
-        #     #self.createConv2dLayer(patches_reshaped, 300, 3)
-        # ],axis=2)
-
         convolution_layers_2d=self.createConv2dLayers(patches_reshaped)
         conv2d_layers = K.layers.concatenate(convolution_layers_2d,axis=2)
 
         #Tensor("concatenate/Identity:0", shape=(None, 100, 900), dtype=float32) ????
-
-        # size = 0
-        # for i in range(len(self.FILTER_SIZE)):
-        #     size += self.NUMBER_OF_FEATURE_MAPS[i]
-        # print('size: ',size)
-
         size = 0
         for i in range(len(self.conv2d_filter_sizes)):
             size += self.conv2d_feature_maps[i]

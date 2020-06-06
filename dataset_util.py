@@ -158,7 +158,7 @@ def createOneHotCodedPOSFeatures(x_train_pos,pos_tags):
 
     return x_train_pos_features
 
-def prepareSentence(input_sentence,pos_tags_group=None):
+def prepareSentence(input_sentence,pos_tags_group=None,oneHotEncode=False):
 
     test_samples_X_with_pos = extractPOS(input_sentence)
     sentence = []
@@ -168,6 +168,11 @@ def prepareSentence(input_sentence,pos_tags_group=None):
         sentence.append(word)
         if pos_tags_group is not None:
             i, pos= get_pos_group(pos,pos_tags_group)
+            if oneHotEncode is True:
+                if i !=-1:
+                    pos= np.eye(1, 6, i)[0].tolist()
+                else:
+                    pos=[1,1,1,1,1,1] #None @todo: Exepriemntal
         sentence_pos.append(pos)
     return sentence, sentence_pos
 
@@ -176,3 +181,5 @@ def extractPOS( input_sentence):
     text = tokenizer.tokenize(input_sentence)
     input_wiht_pos = nltk.pos_tag(text)
     return input_wiht_pos
+
+

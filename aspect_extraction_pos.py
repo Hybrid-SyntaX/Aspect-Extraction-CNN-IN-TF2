@@ -1,9 +1,7 @@
 import tensorflow as tf
 from joblib import dump
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, LambdaCallback, TensorBoard
-
-from AspectModelHelperClasses import AspectModelAuxData, AspectModelMetadata, crf_fscore, crf_precision, \
-    crf_recall
+from AspectModelHelperClasses import AspectModelAuxData, AspectModelMetadata, crf_fscore, crf_precision, crf_recall
 from DatasetReader import DatasetReader
 from POSAspectModel import POSAspectModel
 from helper_util import use_cpu
@@ -19,7 +17,6 @@ configure_enviroment()
 
 max_sentence_length=65
 #nostopwords="-nostopwords"
-
 # Load data
 embeddings_filename=r'data/sentic2vec-utf8.csv'
 restaurantDataset= DatasetReader(f'data/Restaurants_Train_v2.xml.iob',
@@ -36,17 +33,15 @@ posAspectModel=POSAspectModel(
     num_tokens= len(restaurantDataset.word_index)+100,
     max_sentence_length=restaurantDataset.max_sentence_length,
     num_tags = len(restaurantDataset.labels_dict))
-
 model =posAspectModel.createKerasModel()
-
 
 posAspectModelMetadata= AspectModelMetadata(posAspectModel)
 
-metric_fns=[crf_fscore,crf_precision,crf_recall]#crf_accuracy,
-#metric_fns=[]
+#metric_fns=[crf_fscore,crf_precision,crf_recall]#crf_accuracy,
+metric_fns=[]
 
 optimizer='adam'
-epochs=47 #original: 200 , but ran for 47 epochs
+epochs=200 #original: 200 , but ran for 47 epochs
 batch_size=30#30
 
 model.compile(optimizer=optimizer, metrics=metric_fns)

@@ -50,6 +50,17 @@ class MyTestCase(unittest.TestCase):
         'IN': ('IN'),  # prepositions
         'CONJ': ('CC')
     }
+
+    def test_prepare_input_with_pos_groups_onehot(self):
+        input_sentence = 'I love cake'
+
+        sentence, sentence_pos = dataset_util.prepareSentence(input_sentence, self.pos_tags,oneHotEncode = True)
+
+        self.assertEqual(len(sentence_pos), len(sentence))
+        self.assertEqual(sentence, ['I', 'love', 'cake'])
+        #print(sentence_pos)
+        self.assertEqual(sentence_pos, [None,[0,1,0,0,0,0], [1,0,0,0,0,0]])
+
     def test_prepare_input_with_pos_groups(self):
         input_sentence = 'I love cake'
 

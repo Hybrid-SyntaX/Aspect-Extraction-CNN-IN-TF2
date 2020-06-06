@@ -62,6 +62,14 @@ class DatasetReader():
             new_sentence_labels.append(new_sentence_label)
 
         return new_sentences, new_sentence_poses, new_sentence_labels
+    pos_tags = {
+        'NOUN': ('NN', 'NNS', 'NNP', 'NNPS'),
+        'VERB': ('VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'),
+        'ADV': ('RB', 'RBR', 'RBS'),
+        'ADJ': ('JJ', 'JJR', 'JJS'),
+        'IN': ('IN'),  # prepositions
+        'CONJ': ('CC')
+    }
     def prepareDataForPos(self):
 
         x_train, y_train, x_val, y_val = self.prepareData()
@@ -69,16 +77,8 @@ class DatasetReader():
         x_train_pos = self.train_pos_tags
         x_val_pos = self.val_pos_tags
 
-        pos_tags = {
-            'NOUN': ('NN', 'NNS', 'NNP', 'NNPS'),
-            'VERB': ('VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'),
-            'ADV': ('RB', 'RBR', 'RBS'),
-            'ADJ': ('JJ', 'JJR', 'JJS'),
-            'IN': ('IN'),  # prepositions
-            'CONJ': ('CC')
-        }
-        x_train_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_train_pos, pos_tags)
-        x_val_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_val_pos, pos_tags)
+        x_train_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_train_pos, self.pos_tags)
+        x_val_pos_onehot = dataset_util.createOneHotCodedPOSFeatures(x_val_pos, self.pos_tags)
 
         train = self.removeUnusedFeatures(x_train,x_train_pos_onehot,y_train)
         test=self.removeUnusedFeatures(x_val,x_val_pos_onehot,y_val)

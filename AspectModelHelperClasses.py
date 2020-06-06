@@ -41,29 +41,32 @@ class AspectModelAuxData(metaclass = SingletonMeta):
 
 
 class AspectModelBase:
+    def toDict(self):
+        pass
     def __init__(self):
         pass
 
 
 class AspectModelMetadata:
-    def __init__(self, aspectModel: AspectModelBase):
+    def __init__(self, aspectModel: AspectModelBase,metric_fns):
 
         self.aspectModel = aspectModel
 
-    def toDict(self):
-        return {
-            'model_class': type(self.aspectModel).__name__,
-            'learning_rate': self.aspectModel.lr,
-            'dropout_rate': self.aspectModel.DROPOUT_RATE,
-            'conv_droout_rate': self.aspectModel.DROPOUT_CONV,
-            'filter_sizes': self.aspectModel.conv2d_filter_sizes,
-            'feature_maps_count': self.aspectModel.conv2d_feature_maps,
-            'classes_count': self.aspectModel.NUM_TAGS,
-            'window_length': self.aspectModel.WINDOW_LEN,
-            'dim': self.aspectModel.DIM,
-#            'embedding_dim': self.aspectModel.embedding_dim, @TODO: generize to dict
-            'word_counts': self.aspectModel.num_tokens,
-            'max_sentence_length': self.aspectModel.max_sentence_length
+        metrics_dict = {}
+        for fn in metric_fns:
+            metrics_dict[fn.__name__] = 0
+            metrics_dict[f'val_{fn.__name__}'] = 0
+
+        self.modelMetadata = {
+            'model_configs': self.aspectModel.toDict(),
+            'metrics': metrics_dict,
+            'train_info': {
+                'epochs': 0,
+                'batch_size': 0,
+                'optimizer': None,
+                'epochs_trained': 0,
+                'last_trained': datetime.timestamp(datetime.now()),
+            },
         }
 
     def createModelMetadata(self, metric_fns, epochs, batch_size, optimizer):
@@ -73,7 +76,7 @@ class AspectModelMetadata:
             metrics_dict[f'val_{fn.__name__}'] = 0
 
         self.modelMetadata = {
-            'model_configs': self.toDict(),
+            'model_configs': self.aspectModel.toDict(),
             'metrics': metrics_dict,
             'train_info': {
                 'epochs': epochs,
@@ -166,17 +169,28 @@ class KAspectModel(K.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.global_trans_params=None
-
-    def evaluate_with_f1(self,
-               x=None,
-               y=None,
-               trans_params=None):
+    def evaluate_with_sklearn_crf_metrics(self,
+                                          x=None,
+                                          y=None,
+                                          trans_params=None,
+                                          metric_fn='fscore'):
         #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
         AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
         AspectModelAuxData().ViterbiTransParams=trans_params
         y_pred = self.predict(x)
         #print(y)
-        return crf_precision_recall_fscore_manual('fscore',y,y_pred)
+        return crf_precision_recall_fscore_support(metric_fn,y,y_pred)
+    def evaluate_with_crf_metrics(self,
+               x=None,
+               y=None,
+               trans_params=None,
+               metric_fn='fscore'):
+        #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
+        AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+        AspectModelAuxData().ViterbiTransParams=trans_params
+        y_pred = self.predict(x)
+        #print(y)
+        return crf_precision_recall_fscore_manual(metric_fn,y,y_pred)
     # def evaluate(self,
     #            x=None,
     #            y=None,
@@ -258,31 +272,7 @@ def getActivationFunctionName(activation_fn):
         return activation_fn
 
 
-def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
-    gold = []
-    pred = []
 
-    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
-        gold.extend(lab)
-        pred.extend(viterbi_seq)
-
-    gold = K.utils.to_categorical(gold, 4)
-    pred = K.utils.to_categorical(pred, 4)
-
-    if len(gold) > 0 and len(pred) > 0:
-        precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
-                                                                             zero_division = 0)  # average='macrp'
-    else:
-        precision, recall, fscore, support = 0, 0, 0, 0
-
-    if metric_type == 'precision':
-        return precision
-    elif metric_type == 'recall':
-        return recall
-    elif metric_type == 'fscore':
-        return fscore
-    elif metric_type == 'support':
-        return support
 
 
 def decodeViterbi(y_true, y_pred):
@@ -310,8 +300,36 @@ def crf_accuracy(y_true, y_pred):
     return np.mean(accs)
 
 from seqeval.metrics import f1_score
+#@tf.function(experimental_compile=True)
+def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
+    gold = []
+    pred = []
 
-@tf.function(experimental_compile=True)
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        gold.extend(lab)
+        pred.extend(viterbi_seq)
+
+    gold = K.utils.to_categorical(gold, 4)
+    pred = K.utils.to_categorical(pred, 4)
+
+    if len(gold) > 0 and len(pred) > 0:
+        precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
+                                                                             zero_division = 0)  # average='macrp'
+    else:
+        precision, recall, fscore, support = 0, 0, 0, 0
+
+    if metric_type == 'precision':
+        return precision
+    elif metric_type == 'recall':
+        return recall
+    elif metric_type == 'fscore':
+        return fscore
+    elif metric_type == 'support':
+        return support
+    elif metric_type=='all':
+        return {'precision':precision,'recall':recall,'fscore':fscore,'support':support}
+
+#@tf.function(experimental_compile=True)
 def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
 
     correct_preds, total_correct, total_preds = 0., 0., 0.
@@ -336,6 +354,8 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
         return recall
     elif metric_type == 'fscore':
         return fscore
+    elif metric_type=='all':
+        return {'precision':precision,'recall':recall,'fscore':fscore}
 
     #print(f'crf manual claled {CRFMetricsData().i} times')
     # CRFMetricsData().i+=1

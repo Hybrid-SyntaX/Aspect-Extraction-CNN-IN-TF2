@@ -41,9 +41,9 @@ trans_params = load(model_filename.split('.')[0]+'-trans_params.joblib')
 print('trans_params loaded',trans_params)
 model.summary()
 
-model.compile()
-results = model.evaluate_with_f1(x_val_pos,y_val,trans_params)
-print("Validation data F1 Score:", results)
+# model.compile()
+# results = model.evaluate_with_f1(x_val_pos,y_val,trans_params)
+# print("Validation data F1 Score:", results)
 
 # %% Testing model
 
