@@ -27,16 +27,16 @@ def configure_enviroment():
 def readData(max_sentence_length):
     #embeddings_filename=r'P:\Ongoing\University\Data Mining\Aspect Extraction\_\aspect-extraction-master\glove\glove.840B.300d.txt'
     embeddings_filename=r'data/sentic2vec-utf8.csv'
-    # restaurantDataset= DatasetReader('data/Restaurants_Train_v2.xml.iob',
-    #                                  'data/Restaurants_Test_Data_phaseB.xml.iob',
-    #                                  'data/aspect-tags.txt',
-    #                                  embeddings_filename,
-    #                                  max_sentence_length)
-    restaurantDataset= DatasetReader('data/Laptop_Train_v2.xml.iob',
-                                     'data/Laptops_Test_Data_phaseB.xml.iob',
+    restaurantDataset= DatasetReader('data/Restaurants_Train_v2.xml.iob',
+                                     'data/Restaurants_Test_Data_phaseB.xml.iob',
                                      'data/aspect-tags.txt',
                                      embeddings_filename,
                                      max_sentence_length)
+    # restaurantDataset= DatasetReader('data/Laptop_Train_v2.xml.iob',
+    #                                  'data/Laptops_Test_Data_phaseB.xml.iob',
+    #                                  'data/aspect-tags.txt',
+    #                                  embeddings_filename,
+    #                                  max_sentence_length)
     return restaurantDataset
 
 
@@ -100,13 +100,10 @@ class ModelBuilder:
         print("Trainig complete")
 
     def train_model(self,model_type):
-        configure_enviroment()
+
         aspectModel=None
         history=None
 
-        # if model_type == 'conv2d':
-        #     x_train,y_train,x_val,y_val= restaurantDataset.prepareData() #prepare_data(restaurantDataset)
-        # elif model_type == 'pos':
         x_train, x_train_pos, y_train, x_val, x_val_pos, y_val = self.dataset.prepareDataForPos()
 
         if model_type=='conv2d':
@@ -137,7 +134,6 @@ class ModelUser:
 
     def evaluate_model(self,model_filename):
         # read data
-        restaurantDataset = readData(max_sentence_length = 65)
         x_train, x_train_pos, y_train, x_val, x_val_pos, y_val = self.dataset.prepareDataForPos()
 
         #load model
@@ -219,6 +215,7 @@ def createArgsParser():
 
     return args
 def main():
+    configure_enviroment()
     args=createArgsParser()
 
     datasetReader = readData(max_sentence_length = 65)
