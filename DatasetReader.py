@@ -5,8 +5,7 @@ class DatasetReader():
     def __init__(self,train_filename,test_filename,tags_filename,embeddings_filename,max_sentence_length=None):
 
         self.max_sentence_length=max_sentence_length
-        #train_iob = dataset_util.readData(r'Restaurants_Train_v2.xml-nostopwords.iob')
-        #test_iob = dataset_util.readData(r'Restaurants_Test_Data_phaseB.xml-nostopwords.iob')
+
         self.train_iob = dataset_util.readData(train_filename)
         self.test_iob = dataset_util.readData(test_filename)
 

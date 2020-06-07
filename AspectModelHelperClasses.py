@@ -1,12 +1,17 @@
 from datetime import datetime
 import json
+
+
 import tensorflow_addons as tfa
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as K
 import joblib
 from sklearn.metrics import precision_recall_fscore_support
-
+from seqeval.metrics import f1_score, accuracy_score
+from seqeval.metrics import precision_score
+from seqeval.metrics import recall_score
+import seqeval
 
 class SingletonMeta(type):
     _instance= None
@@ -165,32 +170,62 @@ class CRFMetricsData(metaclass = SingletonMeta):
         self.fscore=0.0
 
 
+def evaluate_with_sklearn_crf_metrics(model,
+                                      x=None,
+                                      y=None,
+                                      trans_params=None,
+                                      metric_fn='fscore',useReport=False):
+    #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
+    AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+    AspectModelAuxData().ViterbiTransParams=trans_params
+    y_pred = model.predict(x)
+    #print(y)
+
+    if useReport:
+        return crf_sklearn_classification_report(y,y_pred)
+    else:
+        return crf_precision_recall_fscore_support(metric_fn,y,y_pred)
+def evaluate_with_crf_metrics(model,
+           x=None,
+           y=None,
+           trans_params=None,
+           metric_fn='fscore'):
+    #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
+    AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+    AspectModelAuxData().ViterbiTransParams=trans_params
+    y_pred = model.predict(x)
+    #print(y)
+    return crf_precision_recall_fscore_manual(metric_fn,y,y_pred)
+def evaluate_with_crf_metrics_by_sentence(model,
+           x=None,
+           y=None,
+           trans_params=None,
+           metric_fn='fscore'):
+    #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
+    AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+    AspectModelAuxData().ViterbiTransParams=trans_params
+    y_pred = model.predict(x)
+    #print(y)
+    return crf_precision_recall_fscore_manual_by_sentence(metric_fn,y,y_pred)
+def evaluate_with_crf_metrics_seqeval(model,
+           x=None,
+           y=None,
+           trans_params=None,
+           metric_fn='fscore',useReport=False):
+    #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
+    AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
+    AspectModelAuxData().ViterbiTransParams=trans_params
+    y_pred = model.predict(x)
+    #print(y)
+    if useReport:
+        return seqeval_classification_report(y,y_pred)
+    else:
+        return crf_precision_recall_fscore_seqeval(metric_fn,y,y_pred)
+
 class KAspectModel(K.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.global_trans_params=None
-    def evaluate_with_sklearn_crf_metrics(self,
-                                          x=None,
-                                          y=None,
-                                          trans_params=None,
-                                          metric_fn='fscore'):
-        #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
-        AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
-        AspectModelAuxData().ViterbiTransParams=trans_params
-        y_pred = self.predict(x)
-        #print(y)
-        return crf_precision_recall_fscore_support(metric_fn,y,y_pred)
-    def evaluate_with_crf_metrics(self,
-               x=None,
-               y=None,
-               trans_params=None,
-               metric_fn='fscore'):
-        #return super().evaluate(x,y,batch_size,verbose,sample_weight,steps,callbacks,max_queue_size,workers,use_multiprocessing,return_dict)
-        AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
-        AspectModelAuxData().ViterbiTransParams=trans_params
-        y_pred = self.predict(x)
-        #print(y)
-        return crf_precision_recall_fscore_manual(metric_fn,y,y_pred)
     # def evaluate(self,
     #            x=None,
     #            y=None,
@@ -221,38 +256,21 @@ class KAspectModel(K.Model):
         # on what you pass to `fit()`.
         x, y = data
 
-        #sent_len= [np.count_nonzero(sent) for sent in x]
-
-        #AspectModelAuxData().SentencesLength =tf.TensorArray(dtype = tf.int64,size = len(x))
-        #AspectModelAuxData().SentencesLength =np
-        #if tf.size(x)!=():
-        #    tf.map_fn(self._updateSentLen,x)
-        #input()
-        #AspectModelAuxData().SentencesLength=[]
         AspectModelAuxData().SentencesLength = [np.count_nonzero(sent) for sent in x]
         #self._updateSentLen(x)
 
         with tf.GradientTape() as tape:
             #CRFMetricsData().reset()
-
             y_pred = self(x, training = True)  # Forward pass
 
-
-            log_likelihood, trans_params = tfa.text.crf_log_likelihood(y_pred, y, AspectModelAuxData().SentencesLength)
+            if AspectModelAuxData().ViterbiTransParams !=[]:
+                log_likelihood, trans_params = tfa.text.crf_log_likelihood(y_pred, y, AspectModelAuxData().SentencesLength,AspectModelAuxData().ViterbiTransParams)
+            else:
+                log_likelihood, trans_params = tfa.text.crf_log_likelihood(y_pred, y, AspectModelAuxData().SentencesLength)
             AspectModelAuxData().ViterbiTransParams = trans_params
 
             loss = tf.math.reduce_mean(-log_likelihood)  #
 
-            #loss = self.compiled_loss(y, y_pred, regularization_losses = self.losses)
-            #manuily
-            #losses = self.compiled_loss(y, y_pred, regularization_losses = self.losses)
-            # #print(labels_pred)
-            #
-            # #labels_pred = tf.cast(tf.argmax(y_pred, axis = -1),tf.int32)
-            # #losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits = labels_pred, labels = y)
-            # mask = tf.sequence_mask(AspectModelAuxData().SentencesLength)
-            # losses = tf.boolean_mask(losses, mask)
-            # loss = tf.reduce_mean(losses)
 
         # Compute gradients
         trainable_vars = self.trainable_variables
@@ -299,18 +317,34 @@ def crf_accuracy(y_true, y_pred):
         accs += [a == b for (a, b) in zip(lab, viterbi_seq)]
     return np.mean(accs)
 
-from seqeval.metrics import f1_score
+
 #@tf.function(experimental_compile=True)
-def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
+def crf_sklearn_classification_report(y_true, y_pred):
     gold = []
     pred = []
-
+    accs=[]
     for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        accs += [a == b for (a, b) in zip(lab, viterbi_seq)]
         gold.extend(lab)
         pred.extend(viterbi_seq)
 
-    gold = K.utils.to_categorical(gold, 4)
-    pred = K.utils.to_categorical(pred, 4)
+    gold = K.utils.to_categorical(gold, 3)
+    pred = K.utils.to_categorical(pred, 3)
+
+    from sklearn.metrics import classification_report
+    return classification_report(gold,pred,digits = 4)
+
+def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
+    gold = []
+    pred = []
+    accs=[]
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        accs += [a == b for (a, b) in zip(lab, viterbi_seq)]
+        gold.extend(lab)
+        pred.extend(viterbi_seq)
+
+    gold = K.utils.to_categorical(gold, 3)
+    pred = K.utils.to_categorical(pred, 3)
 
     if len(gold) > 0 and len(pred) > 0:
         precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
@@ -318,6 +352,7 @@ def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
     else:
         precision, recall, fscore, support = 0, 0, 0, 0
 
+    accuracy=np.mean(accs)
     if metric_type == 'precision':
         return precision
     elif metric_type == 'recall':
@@ -326,9 +361,68 @@ def crf_precision_recall_fscore_support(metric_type, y_true, y_pred):
         return fscore
     elif metric_type == 'support':
         return support
+    elif metric_type == 'accuracy':
+        return accuracy
     elif metric_type=='all':
-        return {'precision':precision,'recall':recall,'fscore':fscore,'support':support}
+        return {'precision':precision,'recall':recall,'fscore':fscore,'support':support,'accuracy':accuracy}
+tags_idx=['I-A','O','B-A']#{0:'I-A',1:'O',2:'B-A'}
 
+
+def seqeval_classification_report(y_true, y_pred):
+    gold = []
+    pred = []
+    accs = []
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        # accs += [a == b for (a, b) in zip(lab, viterbi_seq)]
+        lab = [tags_idx[i] for i in lab]
+        viterbi_seq = [tags_idx[i] for i in viterbi_seq]
+
+        gold.extend(lab)
+        pred.extend(viterbi_seq)
+
+    return seqeval.metrics.classification_report(gold,pred,digits = 4)
+def crf_precision_recall_fscore_seqeval(metric_type, y_true, y_pred):
+    gold = []
+    pred = []
+    accs=[]
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        #accs += [a == b for (a, b) in zip(lab, viterbi_seq)]
+        lab = [tags_idx[i] for i in lab]
+        viterbi_seq = [tags_idx[i] for i in viterbi_seq]
+
+        gold.extend(lab)
+        pred.extend(viterbi_seq)
+
+
+    # gold = K.utils.to_categorical(gold, 3)
+    # pred = K.utils.to_categorical(pred, 3)
+
+    if len(gold) > 0 and len(pred) > 0:
+        # precision, recall, fscore, support = precision_recall_fscore_support(gold, pred, average = 'macro',
+        #
+        #
+        #                                                                      azero_division = 0)  # average='macrp'
+        support=0
+        accuracy=accuracy_score(gold,pred)
+        fscore=f1_score(gold,pred)
+        precision=precision_score(gold,pred)
+        recall = recall_score(gold, pred)
+    else:
+        precision, recall, fscore, support = 0, 0, 0, 0
+
+    accuracy=np.mean(accs)
+    if metric_type == 'precision':
+        return precision
+    elif metric_type == 'recall':
+        return recall
+    elif metric_type == 'fscore':
+        return fscore
+    elif metric_type == 'support':
+        return support
+    elif metric_type == 'accuracy':
+        return accuracy
+    elif metric_type=='all':
+        return {'precision':precision,'recall':recall,'fscore':fscore,'support':support,'accuracy':accuracy}
 #@tf.function(experimental_compile=True)
 def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
 
@@ -338,11 +432,88 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
 
         result = tf.math.equal(lab,viterbi_seq)
 
-        correct_preds +=  np.count_nonzero(result) #tf.math.count_nonzero(result) #tf.reduce_sum(tf.cast(np.count_nonzero(result), tf.float32))
+        correct_preds +=  np.count_nonzero(result) # TP + TN
         total_preds += len(viterbi_seq)
         total_correct += len(lab)
 
+    accuracy = correct_preds / total_preds
+    precision = correct_preds / total_preds if correct_preds > 0 else 0
+    recall = correct_preds / total_correct if correct_preds > 0 else 0
+    fscore = (2 * precision * recall) / (precision + recall) if correct_preds > 0 else 0
 
+    # print('correct_preds', correct_preds)
+    # print('total_preds', total_preds)
+    # print('total_correct', total_correct)
+    # print('f1', fscore)
+    # print('precision:', precision)
+    # print('recall:', recall)
+    # input()
+
+    if metric_type == 'precision':
+        return precision
+    elif metric_type == 'recall':
+        return recall
+    elif metric_type == 'fscore':
+        return fscore
+    elif metric_type == 'accuracy':
+        return accuracy
+    elif metric_type=='all':
+        return {'precision':precision,'recall':recall,'fscore':fscore,'accuracy':accuracy}
+
+    def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
+
+        correct_preds, total_correct, total_preds = 0., 0., 0.
+
+        for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+            result = tf.math.equal(lab, viterbi_seq)
+
+            correct_preds += np.count_nonzero(result)  # TP + TN
+            total_preds += len(viterbi_seq)
+            total_correct += len(lab)
+
+        accuracy = correct_preds / total_preds
+        precision = correct_preds / total_preds if correct_preds > 0 else 0
+        recall = correct_preds / total_correct if correct_preds > 0 else 0
+        fscore = (2 * precision * recall) / (precision + recall) if correct_preds > 0 else 0
+
+        # print('correct_preds', correct_preds)
+        # print('total_preds', total_preds)
+        # print('total_correct', total_correct)
+        # print('f1', fscore)
+        # print('precision:', precision)
+        # print('recall:', recall)
+        # input()
+
+        if metric_type == 'precision':
+            return precision
+        elif metric_type == 'recall':
+            return recall
+        elif metric_type == 'fscore':
+            return fscore
+        elif metric_type == 'accuracy':
+            return accuracy
+        elif metric_type == 'all':
+            return {'precision': precision, 'recall': recall, 'fscore': fscore, 'accuracy': accuracy}
+    #print(f'crf manual claled {CRFMetricsData().i} times')
+    # CRFMetricsData().i+=1
+    # CRFMetricsData().precision=precision
+    # CRFMetricsData().recall = recall
+    # CRFMetricsData().fscore = fscore
+def crf_precision_recall_fscore_manual_by_sentence(metric_type, y_true, y_pred):
+
+    correct_preds, total_correct, total_preds = 0., 0., 0.
+
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        result = tf.math.equal(lab,viterbi_seq)
+        result = tf.reduce_all(result)
+
+        if result:
+            correct_preds+=1
+
+        total_preds += 1
+        total_correct += 1
+
+    accuracy = correct_preds/total_preds
     precision = correct_preds / total_preds if correct_preds > 0 else 0
     recall = correct_preds / total_correct if correct_preds > 0 else 0
     fscore = (2 * precision * recall) / (precision + recall) if correct_preds > 0 else 0
@@ -354,14 +525,46 @@ def crf_precision_recall_fscore_manual(metric_type, y_true, y_pred):
         return recall
     elif metric_type == 'fscore':
         return fscore
+    elif metric_type == 'accuracy':
+        return accuracy
     elif metric_type=='all':
-        return {'precision':precision,'recall':recall,'fscore':fscore}
+        return {'precision':precision,'recall':recall,'fscore':fscore,'accuracy':accuracy}
 
-    #print(f'crf manual claled {CRFMetricsData().i} times')
-    # CRFMetricsData().i+=1
-    # CRFMetricsData().precision=precision
-    # CRFMetricsData().recall = recall
-    # CRFMetricsData().fscore = fscore
+def crf_precision_recall_fscore_manual_with_confusion_matrix(metric_type, y_true, y_pred):
+
+    correct_preds, total_correct, total_preds = 0., 0., 0.
+
+    tp,tn,fp,fn=0,0,0,0
+
+    for lab, lab_pred, viterbi_seq in decodeViterbi(y_true, y_pred):
+        result = tf.math.equal(lab,viterbi_seq)
+        result = tf.reduce_all(result)
+
+        if result:
+            tp+=1
+            correct_preds+=1
+
+
+        total_preds += 1
+        total_correct += 1
+
+    accuracy = correct_preds/total_preds
+    precision = correct_preds / total_preds if correct_preds > 0 else 0
+    recall = correct_preds / total_correct if correct_preds > 0 else 0
+    fscore = (2 * precision * recall) / (precision + recall) if correct_preds > 0 else 0
+
+
+    if metric_type == 'precision':
+        return precision
+    elif metric_type == 'recall':
+        return recall
+    elif metric_type == 'fscore':
+        return fscore
+    elif metric_type == 'accuracy':
+        return accuracy
+    elif metric_type=='all':
+        return {'precision':precision,'recall':recall,'fscore':fscore,'accuracy':accuracy}
+
 
 def crf_fscore(y_true, y_pred):
     return crf_precision_recall_fscore_manual('fscore', y_true, y_pred)

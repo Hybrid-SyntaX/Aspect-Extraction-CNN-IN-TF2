@@ -11,7 +11,8 @@ import tensorflow as tf
 
 import dataset_util
 from AspectModelHelperClasses import AspectModelAuxData, AspectModelMetadata, crf_accuracy, crf_fscore, crf_precision, \
-    crf_recall, crf_loglikelihood_loss, KAspectModel
+    crf_recall, crf_loglikelihood_loss, KAspectModel, evaluate_with_crf_metrics, evaluate_with_sklearn_crf_metrics, \
+    evaluate_with_crf_metrics_by_sentence, evaluate_with_crf_metrics_seqeval, seqeval_classification_report
 
 from ConvAspectModel import ConvAspectModel
 from DatasetReader import DatasetReader
@@ -72,11 +73,11 @@ class ModelBuilder:
                    #LambdaCallback(on_epoch_end = lambda epoch, logs: dump(AspectModelAuxData().ViterbiTransParams,convAspectModelMetadata.newFilename() + '-trans_params.joblib')),
                    #EarlyStopping(monitor='val_loss', mode='min', verbose=1,patience=25),
                    #EarlyStopping(monitor='val_crf_fscore', mode='max', verbose=1,patience=25),
+                   #LambdaCallback(on_epoch_end = lambda epoch, logs: convAspectModelMetadata.saveMetadata(model))
                    CSVLogger(modelMetadata.newFilename() + '.log'),
                    TensorBoard(log_dir = "models/tensorflow-results", histogram_freq = 0,
                                write_graph = True, write_images = True,
                                update_freq = 'epoch', profile_batch = 2, embeddings_freq = 0),
-                   #LambdaCallback(on_epoch_end = lambda epoch, logs: convAspectModelMetadata.saveMetadata(model))
                 ]
         modelMetadata.modelMetadata['train_info']['epochs']=self.epochs
         modelMetadata.modelMetadata['train_info']['batch_size'] = self.epochs
@@ -139,16 +140,38 @@ class ModelUser:
         #load model
         model, trans_params = self.loadModel(model_filename)
 
-        #evaluate
-        results = model.evaluate_with_crf_metrics(x_train, y_train, trans_params, 'all')
+
+        print("Train data (seqeval)")
+        results = evaluate_with_crf_metrics_seqeval(model,x_train, y_train, trans_params, 'all',useReport = True)
+        print(results)
+        results = evaluate_with_crf_metrics_seqeval(model,x_val, y_val, trans_params, 'all',useReport = True)
+        print("Validation data (seqeval)")
+        print(results)
+
+        print('-----------------------------------------------------------------------------------')
+        print("Train data (sklearn)")
+        results = evaluate_with_sklearn_crf_metrics(model, x_train, y_train, trans_params, 'all', useReport = True)
+        print(results)
+        results = evaluate_with_sklearn_crf_metrics(model, x_val, y_val, trans_params, 'all', useReport = True)
+        print("Validation data (sklearn)")
+        print( results)
+
+        ##todo make pretty custom reports too
+
+        print('---------------------------Custom functions----------------------------------------')
+        print('-----------------------------------------------------------------------------------')
+        results = evaluate_with_crf_metrics(model,x_train, y_train, trans_params, 'all')
         print("Train data (custom):", results)
-        results = model.evaluate_with_crf_metrics(x_val, y_val, trans_params, 'all')
+        results = evaluate_with_crf_metrics(model,x_val, y_val, trans_params, 'all')
         print("Validation data (custom):", results)
 
-        results = model.evaluate_with_sklearn_crf_metrics(x_train, y_train, trans_params, 'all')
-        print("Train data (sklearn):", results)
-        results = model.evaluate_with_sklearn_crf_metrics(x_val, y_val, trans_params, 'all')
-        print("Validation data (sklearn):", results)
+        print('-----------------------------------------------------------------------------------')
+        results = evaluate_with_crf_metrics_by_sentence(model,x_train, y_train, trans_params, 'all')
+        print("Train data (custom by sentence):", results)
+        results = evaluate_with_crf_metrics_by_sentence(model,x_val, y_val, trans_params, 'all')
+        print("Validation data (custom by sentence):", results)
+
+
 
     def loadModel(self,model_filename):
         model = tf.keras.models.load_model(model_filename, custom_objects = {'KAspectModel': KAspectModel}, compile = False)
