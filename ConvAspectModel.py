@@ -22,9 +22,9 @@ class ConvAspectModel(AspectModelBase):
         self.stride = 1
         self.DROPOUT_RATE=0.5
         self.DROPOUT_CONV = 0.6
-        self.conv2d_filter_sizes = [3, 2, 1]
+        #self.conv2d_filter_sizes = [3, 2, 1]
         self.conv2d_feature_maps = [300, 100, 50]
-        #self.conv2d_filter_sizes = [1,2,3]
+        self.conv2d_filter_sizes = [1,2,3]
         #self.conv2d_feature_maps = [300, 300, 300]
 
         #self.FILTER_SIZE = [1, 2, 3]
@@ -40,7 +40,7 @@ class ConvAspectModel(AspectModelBase):
             num_tokens,
             embedding_dim,
             embeddings_initializer=K.initializers.Constant(self.embedding_matrix),
-            trainable=True, #default false
+            trainable=False, #default false
             mask_zero=True
         )(int_sequences_input) # canon
         #Tensor("embedding/Identity:0", shape=(None, 100, 300), dtype=float32)
@@ -74,7 +74,7 @@ class ConvAspectModel(AspectModelBase):
 
     def createConv2dLayers(self,patches_reshaped):
         convolution_layers_2d = []
-
+        #TODO: DO NOT USE 'same' convolution mode for 1x1 filters
         for feature_map, filter_size in zip(self.conv2d_feature_maps, self.conv2d_filter_sizes):
 
             conv2d = Conv2D(filters=feature_map,
@@ -89,7 +89,8 @@ class ConvAspectModel(AspectModelBase):
             #Tensor("conv/Identity:0", shape=(None, 3, 1, 300), dtype=float32) !!
 
             #conv2d_pooled= MaxPool2D(pool_size= ((self.WINDOW_LEN - filter_size + 1),1),padding='valid',data_format='channels_last')(conv2d)
-            conv2d_pooled = MaxPool2D(pool_size = (self.WINDOW_LEN - filter_size + 1, 1), padding = 'valid',strides=(1,1),
+            conv2d_pooled = MaxPool2D(pool_size = (self.WINDOW_LEN - filter_size + 1, 1), 
+            padding = 'valid',strides=(1,1),
                                       data_format = 'channels_last')(conv2d) #
 
             #1.  Tensor("max_pooling2d/Identity:0", shape = (None, 1, 1, 300), dtype = float32) #(3, 1) / (1,1)

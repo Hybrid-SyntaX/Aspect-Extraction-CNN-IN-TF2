@@ -5,7 +5,7 @@ import joblib
 import numpy as np
 import tensorflow_addons as tfa
 from joblib import dump
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger, LambdaCallback, TensorBoard
 import tensorflow as tf
 
@@ -229,7 +229,7 @@ class ModelUser:
 
 def createArgsParser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", "-m", help = "Select model type")
+    #parser.add_argument("--model", "-m", help = "Select model type")
     parser.add_argument("--train", "-t", help = "Train the model")
     parser.add_argument("--eval", "-e", help = "Evaluate the model", nargs=1)
     parser.add_argument("--use", "-u", help = "Use the model",nargs=3)
